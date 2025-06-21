@@ -58,6 +58,8 @@ df = pdr.get_data_yahoo(ticker, start_date, end_date)
 
 **run streamlit app locally**
 ```
+python train_model.py
+
 streamlit run app.py
 ```
     
