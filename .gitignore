@@ -1,0 +1,22 @@
+# Bỏ qua file Python bytecode
+__pycache__/
+*.py[cod]
+
+# Bỏ qua Jupyter Notebook checkpoint
+.ipynb_checkpoints/
+
+# Bỏ qua môi trường ảo
+.venv/
+
+# Bỏ qua file mô hình
+*.h5
+*.pkl
+*.sav
+scaler.save
+
+# Bỏ qua thư mục của PyCharm
+.idea/
+
+# Bỏ qua file hệ điều hành
+.DS_Store
+Thumbs.db
