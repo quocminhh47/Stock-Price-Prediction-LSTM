@@ -62,7 +62,7 @@ train_df = pd.DataFrame(df['Close'][0:int(len(df) * 0.85)])
 test_df = pd.DataFrame(df['Close'][int(len(df) * 0.85):])
 
 scaler = joblib.load("scaler.save")
-model = load_model("bilstm_model_150.h5")
+model = load_model("keras_model_150.h5")
 
 # ===== Tiền xử lý dữ liệu =====
 past_days = train_df.tail(SEQUENCE_LENGTH)
