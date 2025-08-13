@@ -1,24 +1,28 @@
-# app.py
-
+# ===== File: app.py (Updated with BiLSTM + ARIMA) =====
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import streamlit as st
 from keras.models import load_model
+from sklearn.metrics import mean_absolute_error
 from sklearn.preprocessing import MinMaxScaler
 import joblib
 import yfinance as yf
 import plotly.graph_objects as go
 from datetime import timedelta, date
+from statsmodels.tsa.arima.model import ARIMA
 
 # ====== Cấu hình ======
 SEQUENCE_LENGTH = 150
 START_DATE = "2009-01-01"
 END_DATE = date.today()
 
-# ====== Giao diện ======
+st.set_page_config(page_title="Stock Closing Price Prediction", layout="wide")
 st.title('Stock Closing Price Prediction')
-ticker = st.text_input("Nhập mã cổ phiếu", "GOOGL")
+
+with st.sidebar:
+    st.header("Cấu hình")
+    ticker = st.text_input("Nhập mã cổ phiếu", "GOOGL")
 
 # ====== Tải dữ liệu ======
 df = yf.download(ticker, start=START_DATE, end=END_DATE)
@@ -29,13 +33,12 @@ if df.empty:
 st.subheader(f'Dữ liệu từ {START_DATE} đến {END_DATE}')
 st.write(df.describe())
 
-# ====== Hiển thị biểu đồ cơ bản ======
 st.subheader('Biểu đồ giá đóng cửa')
 fig1 = plt.figure(figsize=(12, 6))
 plt.plot(df.Close)
 st.pyplot(fig1)
 
-# ====== Trung bình động ======
+# ===== Trung bình động =====
 ma100 = df.Close.rolling(100).mean()
 ma200 = df.Close.rolling(200).mean()
 
@@ -54,15 +57,14 @@ plt.plot(ma200, 'b', label='MA200')
 plt.legend()
 st.pyplot(fig3)
 
-# ====== Tách train/test ======
+# ===== Train/Test =====
 train_df = pd.DataFrame(df['Close'][0:int(len(df) * 0.85)])
 test_df = pd.DataFrame(df['Close'][int(len(df) * 0.85):])
 
-# ====== Tải lại scaler và model đã train ======
 scaler = joblib.load("scaler.save")
-model = load_model("keras_model_150.h5")
+model = load_model("bilstm_model_150.h5")
 
-# ====== Tiền xử lý dữ liệu ======
+# ===== Tiền xử lý dữ liệu =====
 past_days = train_df.tail(SEQUENCE_LENGTH)
 final_df = past_days._append(test_df, ignore_index=True)
 input_data = scaler.transform(final_df)
@@ -73,65 +75,48 @@ for i in range(SEQUENCE_LENGTH, input_data.shape[0]):
     y_test.append(input_data[i, 0])
 x_test, y_test = np.array(x_test), np.array(y_test)
 
-# ====== Dự đoán test set ======
+# ===== Dự đoán BiLSTM =====
 y_pred = model.predict(x_test)
 scale = scaler.scale_
 scale_factor = 1 / scale[0]
 y_pred = y_pred * scale_factor
 y_test = y_test * scale_factor
 
-# ====== Biểu đồ test set (dự đoán vs thực tế) ======
+mae = mean_absolute_error(y_test, y_pred.flatten())
+daily_abs_err = np.abs(y_pred.flatten() - y_test)
+daily_pct_err = np.where(y_test != 0, daily_abs_err / np.abs(y_test) * 100, np.nan)
+customdata_pred = np.column_stack([y_test, daily_abs_err, daily_pct_err])
+
 st.subheader('Giá dự đoán vs Thực tế (Test Set)')
 fig4 = go.Figure()
 fig4.add_trace(go.Scatter(
-    x=test_df.index[-len(y_test):],
-    y=y_test,
-    name='Giá thực tế',
-    line=dict(color='green')
+    x=test_df.index[-len(y_test):], y=y_test, name='Giá thực tế',
+    line=dict(color='green'),
+    hovertemplate='Ngày: %{x}<br>Giá thực tế: %{y:.2f}<extra></extra>'
 ))
 fig4.add_trace(go.Scatter(
-    x=test_df.index[-len(y_test):],
-    y=y_pred.flatten(),
-    name='Giá dự đoán',
-    line=dict(color='red')
+    x=test_df.index[-len(y_test):], y=y_pred.flatten(), name='BiLSTM Dự đoán',
+    line=dict(color='red'), customdata=customdata_pred,
+    hovertemplate='Ngày: %{x}<br>Giá dự đoán: %{y:.2f}<br>Thực tế: %{customdata[0]:.2f}<br>Lệch: %{customdata[1]:.2f}<br>Lệch %%: %{customdata[2]:.2f}%%<extra></extra>'
 ))
-fig4.update_layout(
-    title='Dự đoán vs Thực tế',
-    xaxis_title='Ngày',
-    yaxis_title='Giá cổ phiếu',
-    hovermode='x unified'
-)
+fig4.update_layout(title='Dự đoán vs Thực tế', xaxis_title='Ngày', yaxis_title='Giá cổ phiếu', hovermode='x unified')
 st.plotly_chart(fig4, use_container_width=True)
 
-# ====== Dự đoán 30 ngày tương lai ======
-last_sequence = scaler.transform(df['Close'].tail(SEQUENCE_LENGTH).values.reshape(-1, 1))
-future_input = list(last_sequence)
-future_output = []
+# ===== Dự đoán 30 ngày với ARIMA =====
+st.subheader('Dự đoán giá 30 ngày tương lai (ARIMA)')
 
-for _ in range(30):
-    input_array = np.array(future_input[-SEQUENCE_LENGTH:]).reshape(1, SEQUENCE_LENGTH, 1)
-    pred = model.predict(input_array)[0][0]
-    future_output.append(pred)
-    future_input.append([pred])
-
-# Scale lại về giá thật
-future_output = np.array(future_output).reshape(-1, 1) * scale_factor
+model_arima = ARIMA(df['Close'], order=(5, 1, 0))
+model_arima_fit = model_arima.fit()
+forecast = model_arima_fit.forecast(steps=30)
 last_date = df.index[-1]
 future_dates = [last_date + timedelta(days=i) for i in range(1, 31)]
 
-# ====== Biểu đồ dự đoán tương lai ======
-st.subheader('Dự đoán giá 30 ngày tương lai')
 fig5 = go.Figure()
 fig5.add_trace(go.Scatter(
-    x=future_dates,
-    y=future_output.flatten(),
-    name='Dự đoán tương lai',
+    x=future_dates, y=forecast, name='ARIMA Dự đoán',
     line=dict(color='blue', dash='dash')
 ))
-fig5.update_layout(
-    title='Dự đoán 30 ngày tới',
-    xaxis_title='Ngày',
-    yaxis_title='Giá cổ phiếu',
-    hovermode='x unified'
-)
+fig5.update_layout(title='Dự đoán 30 ngày tới (ARIMA)', xaxis_title='Ngày', yaxis_title='Giá cổ phiếu', hovermode='x unified')
 st.plotly_chart(fig5, use_container_width=True)
+
+st.caption(f"MAE (BiLSTM): {mae:.2f}")
