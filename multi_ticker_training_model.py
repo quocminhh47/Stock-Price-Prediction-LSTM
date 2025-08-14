@@ -18,7 +18,7 @@ TICKERS = [
 START_DATE = '2009-01-01'
 END_DATE = '2023-01-01'
 SEQUENCE_LENGTH = 150
-EPOCHS = 50
+EPOCHS = 10
 BATCH_SIZE = 32
 
 # ===== Tải và gộp dữ liệu =====
@@ -42,7 +42,7 @@ for df in all_close[1:]:
 stacked = pd.DataFrame({'Close': pd.concat([data[c] for c in data.columns])})
 scaler = MinMaxScaler()
 scaler.fit(stacked[['Close']])
-joblib.dump(scaler, 'scaler.save')
+joblib.dump(scaler, 'scaler2.save')
 
 # ===== Tạo chuỗi thời gian huấn luyện =====
 def create_sequences(series, seq_len):
@@ -78,5 +78,5 @@ model.compile(optimizer='adam', loss='mean_squared_error')
 model.fit(X_train, y_train, epochs=EPOCHS, batch_size=BATCH_SIZE)
 
 # ===== Lưu mô hình =====
-model.save('multi_ticket_train.h5')
-print("✅ Saved keras_model_150.h5 and scaler.save")
+model.save('multi_ticket_train2.h5')
+print("✅ Saved multi_ticket_train2.h5 and scaler.save")

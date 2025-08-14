@@ -61,12 +61,13 @@ st.pyplot(fig3)
 train_df = pd.DataFrame(df['Close'][0:int(len(df) * 0.85)])
 test_df = pd.DataFrame(df['Close'][int(len(df) * 0.85):])
 
-scaler = joblib.load("scaler.save")
-model = load_model("keras_model_150.h5")
+scaler = joblib.load("scaler2.save")
+model = load_model("multi_ticket_train.h5")
 
 # ===== Tiền xử lý dữ liệu =====
 past_days = train_df.tail(SEQUENCE_LENGTH)
 final_df = past_days._append(test_df, ignore_index=True)
+final_df.columns = ['Close']
 input_data = scaler.transform(final_df)
 
 x_test, y_test = [], []
