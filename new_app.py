@@ -21,13 +21,13 @@ if "last_supported_ticker" not in st.session_state:
 if "last_supported_fig4" not in st.session_state:
     st.session_state["last_supported_fig4"] = None
 
-# Danh sách các mã đã training (đồng bộ với train_model.py)
 SUPPORTED_TICKERS = [
     'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META',
     'TSLA', 'NVDA', 'NFLX', 'BRK-B', 'JPM',
     'V', 'MA', 'PG', 'KO', 'PEP',
     'VCB.VN', 'CTG.VN', 'BID.VN', 'TCB.VN', 'VPB.VN',
-]# Ánh xạ mã cổ phiếu sang tên công ty
+]
+
 TICKER_NAMES = {
     'AAPL': 'Apple Inc.',
     'MSFT': 'Microsoft Corporation',
@@ -50,7 +50,6 @@ TICKER_NAMES = {
     'TCB.VN': 'Ngân hàng TMCP Kỹ Thương Việt Nam',
     'VPB.VN': 'Ngân hàng TMCP Việt Nam Thịnh Vượng',
 }
-
 
 # ---------------- Sidebar ----------------
 with st.sidebar:
@@ -121,40 +120,53 @@ df_ma100.columns = ['Close', 'MA100']
 df_ma200 = pd.concat([close_series, ma100, ma200], axis=1).dropna()
 df_ma200.columns = ['Close', 'MA100', 'MA200']
 
+# --- Close + MA100 ---
 st.subheader(f'Biểu đồ giá đóng cửa + MA100 của {ticker}')
 if df_ma100.empty:
     st.info("Chưa đủ dữ liệu để tính MA100 (cần ≥ 100 phiên).")
 else:
     fig_ma100 = go.Figure()
-    fig_ma100.add_trace(go.Scatter(x=df_ma100.index, y=df_ma100['Close'], name='Giá đóng cửa',
-                                   mode='lines',
-                                   hovertemplate='Ngày: %{x}<br>Giá đóng cửa: %{y:.2f}<extra></extra>'))
-    fig_ma100.add_trace(go.Scatter(x=df_ma100.index, y=df_ma100['MA100'], name='MA100',
-                                   mode='lines',
-                                   hovertemplate='Ngày: %{x}<br>MA100: %{y:.2f}<extra></extra>'))
-    fig_ma100.update_layout(title='Giá đóng cửa + MA100',
-                            xaxis_title='Ngày', yaxis_title='Giá cổ phiếu',
-                            hovermode='x unified')
+    fig_ma100.add_trace(go.Scatter(
+        x=df_ma100.index, y=df_ma100['Close'], name='Giá đóng cửa', mode='lines',
+        hovertemplate='Ngày: %{x|%Y-%m-%d}<br>Giá đóng cửa: %{y:.2f}<extra></extra>'
+    ))
+    fig_ma100.add_trace(go.Scatter(
+        x=df_ma100.index, y=df_ma100['MA100'], name='MA100', mode='lines',
+        hovertemplate='Ngày: %{x|%Y-%m-%d}<br>MA100: %{y:.2f}<extra></extra>'
+    ))
+    fig_ma100.update_layout(
+        title='Giá đóng cửa + MA100',
+        xaxis_title='Ngày', yaxis_title='Giá cổ phiếu', hovermode='x unified'
+    )
+    # (tuỳ chọn) cũng ép định dạng x trên hover của trục:
+    fig_ma100.update_xaxes(hoverformat='%Y-%m-%d')
     st.plotly_chart(fig_ma100, use_container_width=True)
 
+# --- Close + MA100 + MA200 ---
 st.subheader(f'Biểu đồ giá đóng cửa + MA100 + MA200 của {ticker}')
 if df_ma200.empty:
     st.info("Chưa đủ dữ liệu để tính MA200 (cần ≥ 200 phiên).")
 else:
     fig_ma200 = go.Figure()
-    fig_ma200.add_trace(go.Scatter(x=df_ma200.index, y=df_ma200['Close'], name='Giá đóng cửa',
-                                   mode='lines',
-                                   hovertemplate='Ngày: %{x}<br>Giá đóng cửa: %{y:.2f}<extra></extra>'))
-    fig_ma200.add_trace(go.Scatter(x=df_ma200.index, y=df_ma200['MA100'], name='MA100',
-                                   mode='lines',
-                                   hovertemplate='Ngày: %{x}<br>MA100: %{y:.2f}<extra></extra>'))
-    fig_ma200.add_trace(go.Scatter(x=df_ma200.index, y=df_ma200['MA200'], name='MA200',
-                                   mode='lines',
-                                   hovertemplate='Ngày: %{x}<br>MA200: %{y:.2f}<extra></extra>'))
-    fig_ma200.update_layout(title='Giá đóng cửa + MA100 + MA200',
-                            xaxis_title='Ngày', yaxis_title='Giá cổ phiếu',
-                            hovermode='x unified')
+    fig_ma200.add_trace(go.Scatter(
+        x=df_ma200.index, y=df_ma200['Close'], name='Giá đóng cửa', mode='lines',
+        hovertemplate='Ngày: %{x|%Y-%m-%d}<br>Giá đóng cửa: %{y:.2f}<extra></extra>'
+    ))
+    fig_ma200.add_trace(go.Scatter(
+        x=df_ma200.index, y=df_ma200['MA100'], name='MA100', mode='lines',
+        hovertemplate='Ngày: %{x|%Y-%m-%d}<br>MA100: %{y:.2f}<extra></extra>'
+    ))
+    fig_ma200.add_trace(go.Scatter(
+        x=df_ma200.index, y=df_ma200['MA200'], name='MA200', mode='lines',
+        hovertemplate='Ngày: %{x|%Y-%m-%d}<br>MA200: %{y:.2f}<extra></extra>'
+    ))
+    fig_ma200.update_layout(
+        title='Giá đóng cửa + MA100 + MA200',
+        xaxis_title='Ngày', yaxis_title='Giá cổ phiếu', hovermode='x unified'
+    )
+    fig_ma200.update_xaxes(hoverformat='%Y-%m-%d')  # tuỳ chọn
     st.plotly_chart(fig_ma200, use_container_width=True)
+
 
 # ---------------- Chuẩn bị train/test ----------------
 split_idx = int(len(close_series) * 0.85)
