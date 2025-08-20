@@ -18,7 +18,7 @@ TICKERS = [
 START_DATE = '2009-01-01'
 END_DATE = '2023-01-01'
 SEQUENCE_LENGTH = 150
-EPOCHS = 10
+EPOCHS = 50
 BATCH_SIZE = 32
 
 # ===== Tải và gộp dữ liệu =====
